@@ -1,117 +1,141 @@
-(function ($) {
+/* Portfólio — Josias Cavalcante
+   Tema, menu mobile, efeito de digitação, reveal on scroll e lightbox. */
+
+(function () {
     "use strict";
 
-    // Navbar on scrolling
-    $(window).scroll(function () {
-        if ($(this).scrollTop() > 200) {
-            $('.navbar').fadeIn('slow').css('display', 'flex');
-        } else {
-            $('.navbar').fadeOut('slow').css('display', 'none');
-        }
-    });
+    var html = document.documentElement;
 
-
-    // Smooth scrolling on the navbar links
-    $(".navbar-nav a").on('click', function (event) {
-        if (this.hash !== "") {
-            event.preventDefault();
-            
-            $('html, body').animate({
-                scrollTop: $(this.hash).offset().top - 45
-            }, 1500, 'easeInOutExpo');
-            
-            if ($(this).parents('.navbar-nav').length) {
-                $('.navbar-nav .active').removeClass('active');
-                $(this).closest('a').addClass('active');
-            }
-        }
-    });
-
-
-    // Typed Initiate
-    if ($('.typed-text-output').length == 1) {
-        var typed_strings = $('.typed-text').text();
-        var typed = new Typed('.typed-text-output', {
-            strings: typed_strings.split(', '),
-            typeSpeed: 100,
-            backSpeed: 20,
-            smartBackspace: false,
-            loop: true
-        });
+    /* ---------- Tema claro/escuro ---------- */
+    var stored = localStorage.getItem("theme");
+    if (stored === "light" || (!stored && window.matchMedia("(prefers-color-scheme: light)").matches)) {
+        html.setAttribute("data-theme", "light");
     }
 
-
-    // Modal Video
-    $(document).ready(function () {
-        var $videoSrc;
-        $('.btn-play').click(function () {
-            $videoSrc = $(this).data("src");
-        });
-        console.log($videoSrc);
-
-        $('#videoModal').on('shown.bs.modal', function (e) {
-            $("#video").attr('src', $videoSrc + "?autoplay=1&amp;modestbranding=1&amp;showinfo=0");
-        })
-
-        $('#videoModal').on('hide.bs.modal', function (e) {
-            $("#video").attr('src', $videoSrc);
-        })
-    });
-
-
-    // Scroll to Bottom
-    $(window).scroll(function () {
-        if ($(this).scrollTop() > 100) {
-            $('.scroll-to-bottom').fadeOut('slow');
+    document.querySelector(".theme-toggle").addEventListener("click", function () {
+        var isLight = html.getAttribute("data-theme") === "light";
+        if (isLight) {
+            html.removeAttribute("data-theme");
+            localStorage.setItem("theme", "dark");
         } else {
-            $('.scroll-to-bottom').fadeIn('slow');
+            html.setAttribute("data-theme", "light");
+            localStorage.setItem("theme", "light");
         }
     });
 
+    /* ---------- Menu mobile ---------- */
+    var navToggle = document.querySelector(".nav-toggle");
+    var navMenu = document.querySelector(".nav-menu");
 
-    // Skills
-    $('.skill').waypoint(function () {
-        $('.progress .progress-bar').each(function () {
-            $(this).css("width", $(this).attr("aria-valuenow") + '%');
-        });
-    }, {offset: '80%'});
-
-
-    // Portfolio isotope and filter
-    var portfolioIsotope = $('.portfolio-container').isotope({
-        itemSelector: '.portfolio-item',
-        layoutMode: 'fitRows'
+    navToggle.addEventListener("click", function () {
+        var open = navMenu.classList.toggle("open");
+        navToggle.setAttribute("aria-expanded", String(open));
+        navToggle.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
     });
-    $('#portfolio-flters li').on('click', function () {
-        $("#portfolio-flters li").removeClass('active');
-        $(this).addClass('active');
 
-        portfolioIsotope.isotope({filter: $(this).data('filter')});
-    });
-    
-    
-    // Back to top button
-    $(window).scroll(function () {
-        if ($(this).scrollTop() > 200) {
-            $('.back-to-top').fadeIn('slow');
-        } else {
-            $('.back-to-top').fadeOut('slow');
+    navMenu.addEventListener("click", function (e) {
+        if (e.target.classList.contains("nav-link")) {
+            navMenu.classList.remove("open");
+            navToggle.setAttribute("aria-expanded", "false");
         }
     });
-    $('.back-to-top').click(function () {
-        $('html, body').animate({scrollTop: 0}, 1500, 'easeInOutExpo');
-        return false;
+
+    /* ---------- Efeito de digitação ---------- */
+    var roles = [
+        "Analista de Dados",
+        "Especialista em Power BI",
+        "Automação com Python",
+        "SQL & Modelagem de Dados"
+    ];
+    var typedOutput = document.querySelector(".typed-output");
+    var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (reduceMotion) {
+        typedOutput.textContent = roles[0];
+    } else {
+        var roleIndex = 0, charIndex = 0, deleting = false;
+        (function type() {
+            var current = roles[roleIndex];
+            charIndex += deleting ? -1 : 1;
+            typedOutput.textContent = current.slice(0, charIndex);
+
+            var delay = deleting ? 40 : 85;
+            if (!deleting && charIndex === current.length) {
+                delay = 2000;
+                deleting = true;
+            } else if (deleting && charIndex === 0) {
+                deleting = false;
+                roleIndex = (roleIndex + 1) % roles.length;
+                delay = 400;
+            }
+            setTimeout(type, delay);
+        })();
+    }
+
+    /* ---------- Reveal on scroll ---------- */
+    var revealEls = document.querySelectorAll(".reveal");
+    if ("IntersectionObserver" in window && !reduceMotion) {
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add("visible");
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.08 });
+        revealEls.forEach(function (el) { observer.observe(el); });
+    } else {
+        revealEls.forEach(function (el) { el.classList.add("visible"); });
+    }
+
+    /* ---------- Link ativo na navegação ---------- */
+    var sections = document.querySelectorAll("section[id]");
+    var navLinks = document.querySelectorAll(".nav-link");
+
+    function setActiveLink() {
+        var pos = window.scrollY + 120;
+        var currentId = "";
+        sections.forEach(function (sec) {
+            if (sec.offsetTop <= pos) currentId = sec.id;
+        });
+        navLinks.forEach(function (link) {
+            link.classList.toggle("active", link.getAttribute("href") === "#" + currentId);
+        });
+    }
+    window.addEventListener("scroll", setActiveLink, { passive: true });
+    setActiveLink();
+
+    /* ---------- Lightbox ---------- */
+    var lightbox = document.querySelector(".lightbox");
+    var lightboxImg = lightbox.querySelector("img");
+
+    document.querySelectorAll("[data-lightbox]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+            lightboxImg.src = btn.getAttribute("data-lightbox");
+            lightboxImg.alt = btn.querySelector("img") ? btn.querySelector("img").alt : "";
+            lightbox.hidden = false;
+            document.body.style.overflow = "hidden";
+        });
     });
 
-
-    // Testimonials carousel
-    $(".testimonial-carousel").owlCarousel({
-        autoplay: true,
-        smartSpeed: 1500,
-        dots: true,
-        loop: true,
-        items: 1
+    function closeLightbox() {
+        lightbox.hidden = true;
+        lightboxImg.src = "";
+        document.body.style.overflow = "";
+    }
+    lightbox.addEventListener("click", function (e) {
+        if (e.target !== lightboxImg) closeLightbox();
     });
-    
-})(jQuery);
+    document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !lightbox.hidden) closeLightbox();
+    });
 
+    /* ---------- Voltar ao topo ---------- */
+    var backToTop = document.querySelector(".back-to-top");
+    window.addEventListener("scroll", function () {
+        backToTop.classList.toggle("visible", window.scrollY > 600);
+    }, { passive: true });
+
+    /* ---------- Ano do rodapé ---------- */
+    document.querySelector(".year").textContent = new Date().getFullYear();
+})();
